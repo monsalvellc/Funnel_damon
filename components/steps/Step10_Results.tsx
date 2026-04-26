@@ -399,6 +399,26 @@ export default function Step10_Results({ store }: Props) {
     }
   }, [isCalculating, quoteData, logError]);
 
+  // ── Calendly booking conversion — Google Ads ────────────────────────────────
+  // Calendly posts a window message when a booking is confirmed. We listen here
+  // (co-located with InlineWidget) and fire the Ads conversion tag on the event.
+  useEffect(() => {
+    function handleCalendlyMessage(e: MessageEvent) {
+      if (e.data?.event === 'calendly.event_scheduled') {
+        console.log('Google Ads conversion fired');
+        // @ts-expect-error — gtag is injected globally by the <script> in layout.tsx
+        window.gtag?.('event', 'conversion', {
+          send_to: 'AW-18121619085/2d5_CIWKlqMcEI3th8FD',
+          value: 1.0,
+          currency: 'USD',
+        });
+      }
+    }
+
+    window.addEventListener('message', handleCalendlyMessage);
+    return () => window.removeEventListener('message', handleCalendlyMessage);
+  }, []);
+
   // ── Determine which pricing render path to use ─────────────────────────────
 
   /**
