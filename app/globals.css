@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Google Font: Inter
+   Import in layout.tsx if you prefer the Next.js font system instead.
+   For rapid local dev, this CDN import is fine.                              */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* Base resets */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* Body scroll: natural document flow so the logo scrolls up and out of view.
+   overflow-x:hidden clips the horizontal slide-animation overshoot.
+   The background image and flanking images are fixed-position in QuoteFunnel
+   so they remain in place as the user scrolls through the funnel.            */
+body {
+  overflow-x: hidden;
+}
+
+/* Shimmer skeleton animation */
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Step panels: each step fills at least the full viewport height but can grow
+   taller (e.g. Step10 Results) and scroll via the body.                      */
+.step-scroll {
+  min-height: 100dvh;
+}
+
+/* Remove number input spinners */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Option card tap highlight (mobile) */
+.option-card {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Progress bar gradient fill */
+.progress-fill {
+  background: linear-gradient(90deg, #F97316 0%, #FB923C 100%);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out both;
+}
