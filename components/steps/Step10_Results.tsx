@@ -11,6 +11,13 @@ import { calculateEstimate, buildModifier, formatCurrency } from '@/lib/calculat
 import type { PricingTier } from '@/lib/calculateEstimate';
 import type { FunnelStore } from '@/hooks/useFunnelStore';
 
+declare global {
+  interface Window {
+    gtag: (...args: unknown[]) => void;
+    fbq: (...args: unknown[]) => void;
+  }
+}
+
 interface Props {
   store: FunnelStore;
 }
@@ -405,19 +412,19 @@ export default function Step10_Results({ store }: Props) {
   useEffect(() => {
     function handleCalendlyMessage(e: MessageEvent) {
       if (e.data?.event === 'calendly.event_scheduled') {
-        // Google Ads conversion
-        console.log('Google Ads conversion fired');
-        // @ts-expect-error — gtag injected globally by <script> in layout.tsx
-        window.gtag?.('event', 'conversion', {
-          send_to: 'AW-18121619085/2d5_CIWKlqMcEI3th8FD',
-          value: 1.0,
-          currency: 'USD',
-        });
+        if (typeof window.gtag !== 'undefined') {
+          window.gtag('event', 'conversion', {
+            send_to: 'AW-18121619085/2d5_CIWKlqMcEI3th8FD',
+            value: 1.0,
+            currency: 'USD',
+          });
+        }
 
-        // Meta Pixel conversion
-        console.log('Meta Schedule conversion fired');
-        // @ts-expect-error — fbq injected globally by <script> in layout.tsx
-        window.fbq?.('track', 'Schedule');
+        if (typeof window.fbq !== 'undefined') {
+          window.fbq('track', 'Schedule');
+        }
+
+        console.log('✅ Google Ads + Meta Schedule conversions fired');
       }
     }
 
