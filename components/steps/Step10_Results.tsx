@@ -405,13 +405,19 @@ export default function Step10_Results({ store }: Props) {
   useEffect(() => {
     function handleCalendlyMessage(e: MessageEvent) {
       if (e.data?.event === 'calendly.event_scheduled') {
+        // Google Ads conversion
         console.log('Google Ads conversion fired');
-        // @ts-expect-error — gtag is injected globally by the <script> in layout.tsx
+        // @ts-expect-error — gtag injected globally by <script> in layout.tsx
         window.gtag?.('event', 'conversion', {
           send_to: 'AW-18121619085/2d5_CIWKlqMcEI3th8FD',
           value: 1.0,
           currency: 'USD',
         });
+
+        // Meta Pixel conversion
+        console.log('Meta Schedule conversion fired');
+        // @ts-expect-error — fbq injected globally by <script> in layout.tsx
+        window.fbq?.('track', 'Schedule');
       }
     }
 
