@@ -111,6 +111,9 @@ async function saveEstimateToDoc(
   }
 ): Promise<void> {
   try {
+    // Admin SDK .update() is a partial write — it only modifies the fields listed
+    // below. Fields set on document creation (companyId, isRead, createdAt, etc.)
+    // are never touched, so a CRM user marking a lead as read is safe.
     await adminDb.collection('funnel_damon').doc(firebaseDocId).update({
       estimatedRoofSqFt:  data.estimatedRoofSqFt,
       pricingMatrix:      data.pricingMatrix,

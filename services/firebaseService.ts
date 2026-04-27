@@ -167,6 +167,19 @@ export function setGhostWritesEnabled(enabled: boolean): void {
  *                 as it is the locked Firestore field name in funnel_damon.
  */
 export interface GhostLeadData {
+  /**
+   * Auto-injected on document creation (addDoc only). Associates the lead with
+   * the primary tenant profile. Never passed by callers; set internally by
+   * syncLeadToDatabase.
+   */
+  companyId?: string;
+  /**
+   * Auto-injected on document creation (addDoc only). Drives the "Unread" badge
+   * in the CRM dashboard. Set to false so every new lead starts unread.
+   * The CRM flips this to true when a user opens the lead; subsequent ghost
+   * writes must never overwrite it, which is why it is addDoc-only.
+   */
+  isRead?: boolean;
   /** Raw address string typed in Step01 (max 50 chars). */
   typeCastF?: string;
   /** Validated address selected from the autocomplete dropdown. */
@@ -290,6 +303,8 @@ export async function syncLeadToDatabase(
     } else {
       const ref = await addDoc(collection(db, 'funnel_damon'), {
         ...payload,
+        companyId: 'C_0001',
+        isRead:    false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
