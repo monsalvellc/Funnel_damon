@@ -471,79 +471,93 @@ export default function Step10_Results({ store }: Props) {
     : parseInt(propertyDetails?.stories ?? '1', 10) || 1;
 
   const { tiers, sqFootage, completionDays, modifiers, multiplier } = useMemo(() => {
-    // ── Path A: still loading ────────────────────────────────────────────────
-    if (isCalculating || !quoteData) {
-      const fallback = calculateEstimate(leadData);
-      return {
-        tiers:          fallback.tiers,
-        sqFootage:      fallback.squareFootage,
-        completionDays: fallback.completionDays,
-        modifiers:      fallback.modifiers ?? [],
-        multiplier:     fallback.multiplier,
-      };
-    }
+    try {
+      // ── Path A: still loading ──────────────────────────────────────────────
+      if (isCalculating || !quoteData) {
+        const fallback = calculateEstimate(leadData);
+        return {
+          tiers:          fallback.tiers,
+          sqFootage:      fallback.squareFootage,
+          completionDays: fallback.completionDays,
+          modifiers:      fallback.modifiers ?? [],
+          multiplier:     fallback.multiplier,
+        };
+      }
 
-    // ── Path D: quoteData exists but pricingMatrix is missing ────────────────
-    // Return safe placeholder values — the tier cards won't render anyway.
-    if (!quoteData.pricingMatrix) {
-      const fallback = calculateEstimate(leadData);
-      return {
-        tiers:          fallback.tiers,
-        sqFootage:      fallback.squareFootage,
-        completionDays: fallback.completionDays,
-        modifiers:      fallback.modifiers ?? [],
-        multiplier:     fallback.multiplier,
-      };
-    }
+      // ── Path D: quoteData exists but pricingMatrix is missing ──────────────
+      // Return safe placeholder values — the tier cards won't render anyway.
+      if (!quoteData.pricingMatrix) {
+        const fallback = calculateEstimate(leadData);
+        return {
+          tiers:          fallback.tiers,
+          sqFootage:      fallback.squareFootage,
+          completionDays: fallback.completionDays,
+          modifiers:      fallback.modifiers ?? [],
+          multiplier:     fallback.multiplier,
+        };
+      }
 
-    // ── Path B: Solar API succeeded — use real roof sq footage ───────────────
-    if (!solarFailed) {
-      const apiTiers                     = deriveApiTiers(quoteData, leadData);
-      const { labels, multiplier: mult } = buildModifier(leadData);
-      const { completionDays: cd }       = calculateEstimate(leadData);
+      // ── Path B: Solar API succeeded — use real roof sq footage ─────────────
+      if (!solarFailed) {
+        const apiTiers                     = deriveApiTiers(quoteData, leadData);
+        const { labels, multiplier: mult } = buildModifier(leadData);
+        const { completionDays: cd }       = calculateEstimate(leadData);
+        return {
+          tiers:          apiTiers,
+          sqFootage:      quoteData.estimatedRoofSqFt,
+          completionDays: cd,
+          modifiers:      labels ?? [],
+          multiplier:     mult,
+        };
+      }
+
+      // ── Path C2: Solar failed + manual sq ft entered — scale the matrix ────
+      if (fallbackUnlocked) {
+        const { tiers: scaled, roofSqFt }  = scaleFallbackTiers(manualSqFt, storiesNum, quoteData, leadData);
+        const { labels, multiplier: mult } = buildModifier(leadData);
+        const { completionDays: cd }       = calculateEstimate(leadData);
+        return {
+          tiers:          scaled,
+          sqFootage:      roofSqFt,
+          completionDays: cd,
+          modifiers:      labels ?? [],
+          multiplier:     mult,
+        };
+      }
+
+      // ── Path C1: Solar failed, gate active — blurred placeholder prices ────
+      const { multiplier: mult }                      = buildModifier(leadData);
+      const adj                                       = (val: number) => Math.round((val * mult) / 100) * 100;
+      const matrix                                    = quoteData.pricingMatrix?.[resolveCategory(propertyDetails?.roofCategory)] ?? {};
+      const { tiers: staticTiers, completionDays: cd } = calculateEstimate(leadData);
+      const { labels }                                = buildModifier(leadData);
+      const placeholderTiers: [PricingTier, PricingTier, PricingTier] = [
+        { ...staticTiers[0], min: adj(matrix['good']?.min   ?? 0), max: adj(matrix['good']?.max   ?? 0) },
+        { ...staticTiers[1], min: adj(matrix['better']?.min ?? 0), max: adj(matrix['better']?.max ?? 0) },
+        { ...staticTiers[2], min: adj(matrix['best']?.min   ?? 0), max: adj(matrix['best']?.max   ?? 0) },
+      ];
       return {
-        tiers:          apiTiers,
-        sqFootage:      quoteData.estimatedRoofSqFt,
+        tiers:          placeholderTiers,
+        sqFootage:      SERVER_FALLBACK_ROOF_SQ_FT,
         completionDays: cd,
         modifiers:      labels ?? [],
         multiplier:     mult,
       };
-    }
-
-    // ── Path C2: Solar failed + manual sq ft entered — scale the matrix ──────
-    if (fallbackUnlocked) {
-      const { tiers: scaled, roofSqFt }  = scaleFallbackTiers(manualSqFt, storiesNum, quoteData, leadData);
-      const { labels, multiplier: mult } = buildModifier(leadData);
-      const { completionDays: cd }       = calculateEstimate(leadData);
+    } catch {
+      // Last-resort safety net — should never be reached after the engine fix,
+      // but prevents any unforeseen edge case from crashing the Results page.
       return {
-        tiers:          scaled,
-        sqFootage:      roofSqFt,
-        completionDays: cd,
-        modifiers:      labels ?? [],
-        multiplier:     mult,
+        tiers: [
+          { tier: 'Good'   as const, min: 6_500,  max: 9_000,  description: '', includes: [], colorClass: 'from-slate-600 to-slate-700',   recommended: false },
+          { tier: 'Better' as const, min: 9_000,  max: 13_500, description: '', includes: [], colorClass: 'from-blue-600 to-blue-800',     recommended: true  },
+          { tier: 'Best'   as const, min: 13_500, max: 19_000, description: '', includes: [], colorClass: 'from-orange-500 to-orange-700', recommended: false },
+        ] as [PricingTier, PricingTier, PricingTier],
+        sqFootage:      1800,
+        completionDays: '1–3 business days',
+        modifiers:      [] as string[],
+        multiplier:     1,
       };
     }
-
-    // ── Path C1: Solar failed, gate active — show blurred placeholder prices ─
-    // We still derive prices from the fallback matrix so the blurred cards
-    // have the right shape. The user can't read or interact with them.
-    const { multiplier: mult }                      = buildModifier(leadData);
-    const adj                                       = (val: number) => Math.round((val * mult) / 100) * 100;
-    const matrix                                    = quoteData.pricingMatrix?.[resolveCategory(propertyDetails?.roofCategory)] ?? {};
-    const { tiers: staticTiers, completionDays: cd } = calculateEstimate(leadData);
-    const { labels }                                = buildModifier(leadData);
-    const placeholderTiers: [PricingTier, PricingTier, PricingTier] = [
-      { ...staticTiers[0], min: adj(matrix['good']?.min   ?? 0), max: adj(matrix['good']?.max   ?? 0) },
-      { ...staticTiers[1], min: adj(matrix['better']?.min ?? 0), max: adj(matrix['better']?.max ?? 0) },
-      { ...staticTiers[2], min: adj(matrix['best']?.min   ?? 0), max: adj(matrix['best']?.max   ?? 0) },
-    ];
-    return {
-      tiers:          placeholderTiers,
-      sqFootage:      SERVER_FALLBACK_ROOF_SQ_FT,
-      completionDays: cd,
-      modifiers:      labels ?? [],
-      multiplier:     mult,
-    };
   }, [quoteData, leadData, isCalculating, solarFailed, fallbackUnlocked, manualSqFt, storiesNum]);
 
   // ── Gate submit handler ────────────────────────────────────────────────────

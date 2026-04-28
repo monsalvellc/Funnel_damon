@@ -45,14 +45,14 @@ export interface EstimateResult {
  * Flat  — $500–$900/sq × 18sq:  Good=$9k–$10.8k, Better=$11.7k–$13.5k, Best=$14.4k–$16.2k
  * Metal — $525–$795/sq × 18sq:  Good=$9.45k–$11.1k, Better=$11.5k–$12.7k, Best=$13k–$14.3k
  */
-const BASE_PRICES: Record<RoofCategory, [number, number, number, number, number, number]> = {
+const BASE_PRICES: Record<'asphalt' | 'flat' | 'metal', [number, number, number, number, number, number]> = {
   asphalt: [6_500,  9_000,   9_000, 13_500,  13_500, 19_000],
   flat:    [9_000, 10_800,  11_700, 13_500,  14_400, 16_200],
   metal:   [9_450, 11_100,  11_500, 12_700,  13_000, 14_300],
 };
 
 /** Static marketing content for each tier, keyed by roof category. */
-const TIER_CONTENT: Record<RoofCategory, Omit<PricingTier, 'min' | 'max'>[]> = {
+const TIER_CONTENT: Record<'asphalt' | 'flat' | 'metal', Omit<PricingTier, 'min' | 'max'>[]> = {
   asphalt: [
     {
       tier: 'Good',
@@ -178,6 +178,24 @@ const TIER_CONTENT: Record<RoofCategory, Omit<PricingTier, 'min' | 'max'>[]> = {
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CATEGORY RESOLVER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+type PricingCategory = 'asphalt' | 'flat' | 'metal';
+
+const VALID_CATEGORIES = new Set<PricingCategory>(['asphalt', 'flat', 'metal']);
+
+/**
+ * Maps any unknown/null/undefined value (e.g. 'not_sure') to a PricingCategory
+ * so BASE_PRICES and TIER_CONTENT lookups never return undefined.
+ * Defaults to 'asphalt' — the most common residential roof type.
+ */
+function resolveRoofCategory(value: string | null | undefined): PricingCategory {
+  if (value && VALID_CATEGORIES.has(value as PricingCategory)) return value as PricingCategory;
+  return 'asphalt';
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MODIFIER LOGIC
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -202,6 +220,7 @@ export function buildModifier(leadData: LeadData): { multiplier: number; labels:
   const labels: string[] = [];
 
   const p = leadData.propertyDetails;
+  const resolvedCategory = resolveRoofCategory(p?.roofCategory);
 
   // ── Stories ────────────────────────────────────────────────────────────────
   if (p.stories === '2') {
@@ -234,7 +253,7 @@ export function buildModifier(leadData: LeadData): { multiplier: number; labels:
   }
 
   // ── Flat-roof sub-selections ───────────────────────────────────────────────
-  if (p.roofCategory === 'flat') {
+  if (resolvedCategory === 'flat') {
     if (p.flatMaterial === 'TPO') {
       multiplier += 0.10;
       labels.push('TPO membrane (+10%)');
@@ -246,7 +265,7 @@ export function buildModifier(leadData: LeadData): { multiplier: number; labels:
   }
 
   // ── Metal-roof sub-selection ───────────────────────────────────────────────
-  if (p.roofCategory === 'metal' && p.metalType === 'Standing Seam') {
+  if (resolvedCategory === 'metal' && p.metalType === 'Standing Seam') {
     multiplier += 0.15;
     labels.push('Standing seam panels (+15%)');
   }
@@ -288,7 +307,7 @@ function recommendedTierIndex(leadData: LeadData): number {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export function calculateEstimate(leadData: LeadData): EstimateResult {
-  const roofCategory: RoofCategory = leadData.propertyDetails.roofCategory ?? 'asphalt';
+  const roofCategory = resolveRoofCategory(leadData.propertyDetails?.roofCategory);
   const [gMin, gMax, bMin, bMax, bestMin, bestMax] = BASE_PRICES[roofCategory];
   const { multiplier, labels } = buildModifier(leadData);
   const recIdx = recommendedTierIndex(leadData);
@@ -308,7 +327,7 @@ export function calculateEstimate(leadData: LeadData): EstimateResult {
     max: adj(rawPrices[i][1]),
   })) as [PricingTier, PricingTier, PricingTier];
 
-  const completionMap: Record<RoofCategory, string> = {
+  const completionMap: Record<PricingCategory, string> = {
     asphalt: '1–3 business days',
     metal:   '3–7 business days',
     flat:    '2–4 business days',
