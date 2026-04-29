@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MapPin, CheckCircle, Shield, Star, Home, ArrowRight, Loader2 } from 'lucide-react';
+import { MapPin, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 import type { FunnelStore, AddressData } from '@/hooks/useFunnelStore';
 import { ENABLE_GHOST_CAPTURE } from '@/hooks/useFunnelStore';
 import { syncLeadToDatabase } from '@/services/firebaseService';
@@ -61,6 +61,11 @@ interface GmapsAutocompleteSuggestion {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // HELPERS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** Returns true only when the first 8 chars of `text` contain at least one digit. */
+function hasHouseNumber(text: string): boolean {
+  return /\d/.test(text.slice(0, 8));
+}
 
 function getComp(
   comps: GmapsAddressComponent[],
@@ -362,6 +367,16 @@ export default function Step01_Address({ store }: Props) {
       if (!suggestion.placePrediction) return;
       const pred = suggestion.placePrediction;
 
+      // Bouncer: reject city/zip selections that have no house number.
+      const mainText = pred.structuredFormat?.mainText?.text || pred.text?.text || '';
+      if (!hasHouseNumber(mainText)) {
+        setQuery('');
+        setSelected(null);
+        setSuggestions([]);
+        setAddressError('Please select a valid address.');
+        return;
+      }
+
       setQuery(pred.text.text);
       setSuggestions([]);
       setIsGeocoding(true);
@@ -394,27 +409,13 @@ export default function Step01_Address({ store }: Props) {
 
   // ── handleAdvance ─────────────────────────────────────────────────────────
   const handleAdvance = useCallback(() => {
-    const trimmed = query.trim();
-    if (!trimmed || isGeocoding) return;
-
-    // A valid selection must have geocoded coordinates from the Places API.
-    const hasValidCoords = selected !== null && selected.lat !== 0 && selected.lng !== 0;
-
-    if (hasValidCoords) {
-      setAddressError(null);
-      handleCommitAddress(selected!);
-    } else if (suggestions.length > 0) {
-      // User typed but hasn't clicked — resolve the top suggestion for them.
-      handleSelectSuggestion(suggestions[0]);
-    } else {
-      setAddressError(
-        'Please select your exact address from the dropdown list so we can accurately measure your roof.'
-      );
-    }
-  }, [query, isGeocoding, selected, suggestions, handleCommitAddress, handleSelectSuggestion]);
+    if (!selected || isGeocoding) return;
+    setAddressError(null);
+    handleCommitAddress(selected);
+  }, [selected, isGeocoding, handleCommitAddress]);
 
   const showDropdown = isFocused && suggestions.length > 0 && !isGeocoding;
-  const canAdvance   = query.trim().length > 0 && !isGeocoding;
+  const canAdvance   = selected !== null && !isGeocoding;
 
   return (
     <div className="step-scroll flex flex-col min-h-dvh">
@@ -597,22 +598,6 @@ export default function Step01_Address({ store }: Props) {
           </p>
         </div>
 
-        {/* Trust badges */}
-        <div
-          className="flex flex-wrap items-center justify-center gap-4 mt-12 animate-fade-in"
-          style={{ animationDelay: '320ms' }}
-        >
-          {[
-            { icon: Star,   text: '4.9 · 1,200+ Reviews' },
-            { icon: Shield, text: 'Licensed & Insured' },
-            { icon: Home,   text: '5,000+ Roofs Installed' },
-          ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-1.5 text-white/50 text-xs font-medium">
-              <Icon size={13} className="text-orange-400" />
-              {text}
-            </div>
-          ))}
-        </div>
       </div>
 
       <p className="text-white/25 text-xs text-center pb-6 px-6">
