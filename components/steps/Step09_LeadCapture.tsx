@@ -144,7 +144,7 @@ export default function Step09_LeadCapture({ store }: Props) {
             Your estimate is ready!
           </h2>
           <p className="text-white/60 text-base mt-2">
-            Where should we send your personalized report?
+            Enter your contact details to unlock you online estimate.
           </p>
         </div>
 
