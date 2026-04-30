@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducer, useCallback } from 'react';
+import { useReducer, useCallback, useEffect, useRef } from 'react';
 import {
   syncLeadToDatabase,
   setGhostWritesEnabled,
@@ -11,6 +11,11 @@ import {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // QUOTE DATA TYPE (populated by /api/get-estimate)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export interface BoundingBox {
+  sw: { latitude: number; longitude: number };
+  ne: { latitude: number; longitude: number };
+}
 
 export interface QuoteData {
   groundFloorSqFt: number;
@@ -24,6 +29,12 @@ export interface QuoteData {
   solarDataStatus: string;
   /** Requester's IP address, extracted server-side and returned in the response. */
   ipAddress?: string;
+  /** Pitch of the primary roof segment in degrees. Null when Solar API fails. */
+  roofPitchDegrees?: number | null;
+  /** Whole-roof area in roofing squares (sq ft ÷ 100). Null when Solar API fails. */
+  roofAreaSquares?: number | null;
+  /** Bounding box of the primary roof segment (sw/ne lat-lng). Null when Solar API fails. */
+  boundingBox?: BoundingBox | null;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -31,6 +42,24 @@ export interface QuoteData {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const ENABLE_GHOST_CAPTURE = true;
+
+/**
+ * Human-readable label for each physical step index.
+ * Used by the drop-off tracker to write lastStepCompleted to Firestore.
+ */
+export const STEP_LABELS: Record<number, string> = {
+  0:  'Address Entry',
+  1:  'Roof Verification',
+  2:  'Roof Type',
+  3:  'Flat Roof Details',
+  4:  'Metal Roof Details',
+  5:  'Pitch',
+  6:  'Stories',
+  7:  'Issues',
+  8:  'Timeline',
+  10: 'Lead Capture',
+  11: 'Results',
+};
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // DOMAIN TYPES
@@ -99,6 +128,12 @@ export interface LeadData {
    * recalculates the pricing matrix client-side using this value.
    */
   manualHomeSqFt?: number;
+  /** Pitch of the primary roof segment in degrees, from solarPotential.roofSegmentStats[0]. */
+  roofPitchDegrees?: number | null;
+  /** Whole-roof area in roofing squares (areaMeters2 × 10.7639 ÷ 100). */
+  roofAreaSquares?: number | null;
+  /** Bounding box of the primary roof segment from solarPotential.roofSegmentStats[0]. */
+  boundingBox?: BoundingBox | null;
 }
 
 export type Direction = 'forward' | 'backward';
@@ -228,7 +263,15 @@ type Action =
   | { type: 'SET_PHONE_F'; payload: string }
   | { type: 'SET_CALENDLY_URL'; payload: string }
   | { type: 'SET_SHOW_PROMO_BANNER'; payload: boolean }
-  | { type: 'SET_PROMO_BANNER_TEXT'; payload: string };
+  | { type: 'SET_PROMO_BANNER_TEXT'; payload: string }
+  | {
+      type: 'SET_SOLAR_DETAILS';
+      payload: {
+        roofPitchDegrees?: number | null;
+        roofAreaSquares?: number | null;
+        boundingBox?: BoundingBox | null;
+      };
+    };
 
 function funnelReducer(state: FunnelState, action: Action): FunnelState {
   switch (action.type) {
@@ -330,6 +373,12 @@ function funnelReducer(state: FunnelState, action: Action): FunnelState {
 
     case 'SET_PROMO_BANNER_TEXT':
       return { ...state, promoBannerText: action.payload };
+
+    case 'SET_SOLAR_DETAILS':
+      return {
+        ...state,
+        leadData: { ...state.leadData, ...action.payload },
+      };
 
     default:
       return state;
@@ -517,17 +566,33 @@ export function useFunnelStore() {
       dispatch({ type: 'SET_QUOTE_DATA', payload: data });
       dispatch({ type: 'SET_SOLAR_STATUS', payload: data.solarDataStatus });
 
-      // Persist solarDataStatus and IP address to the user's Firestore doc in
-      // one write, regardless of whether the Solar API succeeded or failed.
+      // Store granular Solar fields in leadData so they are included in the
+      // final submission blob written by syncToFirebase on Step09.
+      if (data.roofPitchDegrees != null || data.roofAreaSquares != null || data.boundingBox != null) {
+        dispatch({
+          type: 'SET_SOLAR_DETAILS',
+          payload: {
+            roofPitchDegrees: data.roofPitchDegrees ?? null,
+            roofAreaSquares:  data.roofAreaSquares  ?? null,
+            boundingBox:      data.boundingBox      ?? null,
+          },
+        });
+      }
+
+      // Persist solarDataStatus, IP, and granular Solar fields to the user's
+      // Firestore doc in one write, regardless of Solar API success or failure.
       if (resolvedDocId) {
         syncLeadToDatabase(
           {
             solarDataStatus: data.solarDataStatus,
-            ...(data.ipAddress ? { ipAddress: data.ipAddress } : {}),
+            ...(data.ipAddress          != null ? { ipAddress:         data.ipAddress          } : {}),
+            ...(data.roofPitchDegrees   != null ? { roofPitchDegrees:  data.roofPitchDegrees   } : {}),
+            ...(data.roofAreaSquares    != null ? { roofAreaSquares:   data.roofAreaSquares    } : {}),
+            ...(data.boundingBox        != null ? { boundingBox:       data.boundingBox        } : {}),
           },
           resolvedDocId
         ).catch((err) =>
-          console.warn('[fetchEstimate] Failed to persist IP/status to Firestore:', err)
+          console.warn('[fetchEstimate] Failed to persist Solar details to Firestore:', err)
         );
       }
     } catch (err) {
@@ -590,6 +655,31 @@ export function useFunnelStore() {
   const seq         = getStepSequence(state.leadData.propertyDetails.roofCategory);
   const visualStep  = Math.max(1, seq.indexOf(state.currentStep) + 1);
   const visualTotal = seq.length;
+
+  // ── Drop-off tracker ─────────────────────────────────────────────────────
+  // Fires whenever currentStep OR firebaseDocId changes. Writes
+  // lastStepCompleted to the funnel_damon doc so the CRM knows exactly where
+  // each session abandoned the funnel.
+  //
+  // lastTrackedStep guards against writing the same step twice — which can
+  // happen when docId arrives after the step has already been set (e.g. the
+  // user is on step 1 before the addDoc round-trip completes).
+  const lastTrackedStep = useRef<number | null>(null);
+
+  useEffect(() => {
+    const docId = state.firebaseDocId;
+    const step  = state.currentStep;
+
+    if (!docId) return; // doc not created yet; write will happen once docId arrives
+    if (lastTrackedStep.current === step) return; // already wrote this step
+
+    lastTrackedStep.current = step;
+    const stepName = STEP_LABELS[step] ?? `Step ${step}`;
+
+    syncLeadToDatabase({ lastStepCompleted: stepName }, docId).catch((err) =>
+      console.warn('[StepTracker] Failed to write lastStepCompleted:', err)
+    );
+  }, [state.currentStep, state.firebaseDocId]);
 
   return {
     state,

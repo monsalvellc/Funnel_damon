@@ -41,6 +41,11 @@ const PRICE_PER_SQUARE: Record<string, Record<string, [number, number]>> = {
 
 type PricingMatrix = Record<string, Record<string, { min: number; max: number }>>;
 
+interface BoundingBox {
+  sw: { latitude: number; longitude: number };
+  ne: { latitude: number; longitude: number };
+}
+
 export interface AdvancedSolarMetrics {
   imageryDate:      unknown;        // { year, month, day } object from the API
   imageryQuality:   string;
@@ -108,6 +113,9 @@ async function saveEstimateToDoc(
     pricingMatrix: PricingMatrix;
     normalizedAddress: string;
     advancedSolarMetrics?: AdvancedSolarMetrics;
+    roofPitchDegrees?: number | null;
+    roofAreaSquares?: number | null;
+    boundingBox?: BoundingBox | null;
   }
 ): Promise<void> {
   try {
@@ -118,7 +126,10 @@ async function saveEstimateToDoc(
       estimatedRoofSqFt:  data.estimatedRoofSqFt,
       pricingMatrix:      data.pricingMatrix,
       normalizedAddress:  data.normalizedAddress,
-      ...(data.advancedSolarMetrics ? { advancedSolarMetrics: data.advancedSolarMetrics } : {}),
+      ...(data.advancedSolarMetrics  ? { advancedSolarMetrics: data.advancedSolarMetrics } : {}),
+      ...(data.roofPitchDegrees != null ? { roofPitchDegrees: data.roofPitchDegrees } : {}),
+      ...(data.roofAreaSquares  != null ? { roofAreaSquares:  data.roofAreaSquares  } : {}),
+      ...(data.boundingBox      != null ? { boundingBox:      data.boundingBox      } : {}),
       updatedAt: FieldValue.serverTimestamp(),
     });
     console.log(`[saveEstimateToDoc] Merged estimate into funnel_damon/${firebaseDocId}`);
@@ -135,6 +146,9 @@ interface PropertyData {
   estimatedRoofSqFt: number;
   solarDataStatus: string;
   advancedSolarMetrics?: AdvancedSolarMetrics;
+  roofPitchDegrees: number | null;
+  roofAreaSquares: number | null;
+  boundingBox: BoundingBox | null;
 }
 
 /**
@@ -170,6 +184,7 @@ async function fetchGoogleSolarData(
   captureAdvanced: boolean
 ): Promise<PropertyData> {
   const FALLBACK_SQ_FT = Math.round(97 * 10.7639);
+  const NULL_FIELDS = { roofPitchDegrees: null, roofAreaSquares: null, boundingBox: null } as const;
 
   const apiKey = process.env.GOOGLE_SOLAR_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -178,6 +193,7 @@ async function fetchGoogleSolarData(
     return {
       estimatedRoofSqFt: FALLBACK_SQ_FT,
       solarDataStatus: 'Failed: 403 API Key/Billing Issue',
+      ...NULL_FIELDS,
     };
   }
 
@@ -193,19 +209,19 @@ async function fetchGoogleSolarData(
 
     if (res.status === 404) {
       console.warn(`[SolarAPI] 404 — building not mapped at (${lat}, ${lng}). Using baseline.`);
-      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: 404 No Coverage in Area' };
+      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: 404 No Coverage in Area', ...NULL_FIELDS };
     }
     if (res.status === 403) {
       console.warn(`[SolarAPI] 403 — API key invalid or billing not enabled. Using baseline.`);
-      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: 403 API Key/Billing Issue' };
+      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: 403 API Key/Billing Issue', ...NULL_FIELDS };
     }
     if (res.status === 400) {
       console.warn(`[SolarAPI] 400 — bad coordinates (lat=${lat}, lng=${lng}). Using baseline.`);
-      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: 400 Bad Request/Coordinates' };
+      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: 400 Bad Request/Coordinates', ...NULL_FIELDS };
     }
     if (!res.ok) {
       console.warn(`[SolarAPI] Unexpected status ${res.status} for (${lat}, ${lng}). Using baseline.`);
-      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: Network/Unknown Error' };
+      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: Network/Unknown Error', ...NULL_FIELDS };
     }
 
     const json = await res.json();
@@ -213,16 +229,38 @@ async function fetchGoogleSolarData(
 
     if (!areaMeters2 || areaMeters2 <= 0) {
       console.warn(`[SolarAPI] areaMeters2 missing or zero for (${lat}, ${lng}). Using baseline.`);
-      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: 404 No Coverage in Area' };
+      return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: 404 No Coverage in Area', ...NULL_FIELDS };
     }
 
     const estimatedRoofSqFt = Math.round(areaMeters2 * 10.7639);
+
+    // ── Granular extraction (always captured on success) ───────────────────
+    // Roofing squares: areaMeters2 × 10.7639 sq ft/m² ÷ 100 sq ft/square
+    const roofAreaSquares = parseFloat((estimatedRoofSqFt / 100).toFixed(2));
+
+    const roofSegmentStats = json?.solarPotential?.roofSegmentStats;
+    const primarySegment   = Array.isArray(roofSegmentStats) && roofSegmentStats.length > 0
+      ? roofSegmentStats[0]
+      : null;
+
+    const roofPitchDegrees: number | null =
+      primarySegment?.pitchDegrees != null ? (primarySegment.pitchDegrees as number) : null;
+
+    const rawBbox = primarySegment?.boundingBox ?? null;
+    const boundingBox: BoundingBox | null = rawBbox
+      ? {
+          sw: { latitude: (rawBbox.sw?.latitude  as number) ?? 0, longitude: (rawBbox.sw?.longitude as number) ?? 0 },
+          ne: { latitude: (rawBbox.ne?.latitude  as number) ?? 0, longitude: (rawBbox.ne?.longitude as number) ?? 0 },
+        }
+      : null;
+
     console.log(
-      `[SolarAPI] Success (${lat}, ${lng}) → ${areaMeters2.toFixed(1)} m² → ${estimatedRoofSqFt} sq ft`
+      `[SolarAPI] Success (${lat}, ${lng}) → ${areaMeters2.toFixed(1)} m² → ${estimatedRoofSqFt} sq ft` +
+      ` (${roofAreaSquares} sq) pitch=${roofPitchDegrees ?? 'n/a'}°`
     );
 
     if (!captureAdvanced) {
-      return { estimatedRoofSqFt, solarDataStatus: 'Success: High-Fidelity Data' };
+      return { estimatedRoofSqFt, solarDataStatus: 'Success: High-Fidelity Data', roofPitchDegrees, roofAreaSquares, boundingBox };
     }
 
     // ── Advanced extraction ────────────────────────────────────────────────
@@ -246,10 +284,13 @@ async function fetchGoogleSolarData(
       estimatedRoofSqFt,
       solarDataStatus: 'Success: High-Fidelity Data',
       advancedSolarMetrics,
+      roofPitchDegrees,
+      roofAreaSquares,
+      boundingBox,
     };
   } catch (err) {
     console.warn(`[SolarAPI] Network/fetch error for (${lat}, ${lng}):`, err);
-    return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: Network/Unknown Error' };
+    return { estimatedRoofSqFt: FALLBACK_SQ_FT, solarDataStatus: 'Failed: Network/Unknown Error', ...NULL_FIELDS };
   }
 }
 
@@ -338,8 +379,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Cache miss — call Solar API ──────────────────────────────────────────
-   const captureAdvanced = captureAdvancedSolarData === true;
-    const { estimatedRoofSqFt, solarDataStatus, advancedSolarMetrics } =
+    const captureAdvanced = captureAdvancedSolarData === true;
+    const { estimatedRoofSqFt, solarDataStatus, advancedSolarMetrics, roofPitchDegrees, roofAreaSquares, boundingBox } =
       await fetchGoogleSolarData(lat, lng, captureAdvanced);
     const { squares, pricingMatrix } = buildPricingMatrix(estimatedRoofSqFt);
 
@@ -349,7 +390,10 @@ export async function POST(req: NextRequest) {
         estimatedRoofSqFt,
         pricingMatrix,
         normalizedAddress,
-        ...(advancedSolarMetrics ? { advancedSolarMetrics } : {}),
+        ...(advancedSolarMetrics  ? { advancedSolarMetrics }  : {}),
+        ...(roofPitchDegrees != null ? { roofPitchDegrees } : {}),
+        ...(roofAreaSquares  != null ? { roofAreaSquares  } : {}),
+        ...(boundingBox      != null ? { boundingBox      } : {}),
       }).catch((err) =>
         console.warn('[POST] saveEstimateToDoc rejected unexpectedly:', err)
       );
@@ -361,7 +405,10 @@ export async function POST(req: NextRequest) {
       pricingMatrix,
       solarDataStatus,
       ipAddress,
-      ...(advancedSolarMetrics ? { advancedSolarMetrics } : {}),
+      ...(advancedSolarMetrics  ? { advancedSolarMetrics }  : {}),
+      ...(roofPitchDegrees != null ? { roofPitchDegrees } : {}),
+      ...(roofAreaSquares  != null ? { roofAreaSquares  } : {}),
+      ...(boundingBox      != null ? { boundingBox      } : {}),
     });
   } catch (err) {
     console.error('[/api/get-estimate] Unhandled error:', err);

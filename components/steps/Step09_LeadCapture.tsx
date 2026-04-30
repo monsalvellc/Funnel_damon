@@ -101,7 +101,7 @@ function formatPhoneInput(raw: string): string {
  * and disables the form to prevent double-clicks.
  */
 export default function Step09_LeadCapture({ store }: Props) {
-  const { state, goForward, goBackward, updateContactInfo, setSubmitting } = store;
+  const { state, goForward, goBackward, updateContactInfo, setSubmitting, fetchEstimate } = store;
   const { contactInfo } = state.leadData;
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -151,6 +151,14 @@ export default function Step09_LeadCapture({ store }: Props) {
       }
 
       console.log('[LeadCapture] Lead saved successfully — ID:', saveResult.data?.id);
+
+      // Trigger the Solar API estimate now that the lead is confirmed.
+      // Awaiting here keeps the spinner visible while the API resolves so
+      // Step10 renders with prices already populated (no skeleton flash).
+      if (state.leadData.addressData) {
+        await fetchEstimate(state.leadData.addressData, state.firebaseDocId);
+      }
+
       goForward();
     } catch (err) {
       console.error('[LeadCapture] Unexpected submission error:', err);
@@ -158,7 +166,7 @@ export default function Step09_LeadCapture({ store }: Props) {
     } finally {
       setSubmitting(false);
     }
-  }, [contactInfo, state.leadData, goForward, setSubmitting]);
+  }, [contactInfo, state.leadData, state.firebaseDocId, goForward, setSubmitting, fetchEstimate]);
 
   const isSubmitting = state.isSubmitting;
 

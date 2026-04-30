@@ -219,6 +219,27 @@ export interface GhostLeadData {
    * estimate resolves so the CRM can see traffic origin per lead.
    */
   ipAddress?: string;
+  /**
+   * Human-readable name of the step the user most recently reached.
+   * Written on every step transition by useFunnelStore's drop-off tracker.
+   * Values come from STEP_LABELS (e.g. 'Roof Type', 'Timeline', 'Results').
+   */
+  lastStepCompleted?: string;
+  /**
+   * Pitch of the primary roof segment in degrees, from
+   * solarPotential.roofSegmentStats[0].pitchDegrees. Null when Solar API fails.
+   */
+  roofPitchDegrees?: number | null;
+  /**
+   * Whole-roof area in roofing squares (areaMeters2 × 10.7639 ÷ 100).
+   * Derived from solarPotential.wholeRoofStats.areaMeters2. Null when Solar API fails.
+   */
+  roofAreaSquares?: number | null;
+  /**
+   * Bounding box of the primary roof segment from
+   * solarPotential.roofSegmentStats[0].boundingBox. Null when Solar API fails.
+   */
+  boundingBox?: { sw: { latitude: number; longitude: number }; ne: { latitude: number; longitude: number } } | null;
 }
 
 export interface SyncLeadResult {
@@ -255,6 +276,9 @@ export interface SyncLeadResult {
  *   lastNameF       ← last name,             Step09_LeadCapture, on form submit
  *   phoneNumerF     ← phone number,          Step09_LeadCapture, on form submit (name locked)
  *   emailF          ← email address,         Step09_LeadCapture, on form submit
+ *   roofPitchDegrees ← primary segment pitch, useFunnelStore,   after fetchEstimate resolves
+ *   roofAreaSquares  ← whole-roof squares,   useFunnelStore,    after fetchEstimate resolves
+ *   boundingBox      ← primary segment bbox, useFunnelStore,    after fetchEstimate resolves
  *
  * To add a new field:
  *   1. Add it to GhostLeadData with a JSDoc comment.
@@ -289,8 +313,12 @@ export async function syncLeadToDatabase(
   if (data.flatMaterial    !== undefined) payload.flatMaterial    = data.flatMaterial;
   if (data.needsRedecking  !== undefined) payload.needsRedecking  = data.needsRedecking;
   if (data.metalType       !== undefined) payload.metalType       = data.metalType;
-  if (data.manualHomeSqFt !== undefined) payload.manualHomeSqFt = data.manualHomeSqFt;
-  if (data.ipAddress      !== undefined) payload.ipAddress      = data.ipAddress;
+  if (data.manualHomeSqFt     !== undefined) payload.manualHomeSqFt     = data.manualHomeSqFt;
+  if (data.ipAddress          !== undefined) payload.ipAddress          = data.ipAddress;
+  if (data.lastStepCompleted  !== undefined) payload.lastStepCompleted  = data.lastStepCompleted;
+  if (data.roofPitchDegrees   !== undefined) payload.roofPitchDegrees   = data.roofPitchDegrees;
+  if (data.roofAreaSquares    !== undefined) payload.roofAreaSquares    = data.roofAreaSquares;
+  if (data.boundingBox        !== undefined) payload.boundingBox        = data.boundingBox;
 
   try {
     if (docId) {

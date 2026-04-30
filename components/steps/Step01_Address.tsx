@@ -137,7 +137,7 @@ interface Props {
  *   3. Free-form text, no suggestions → commit with lat: 0, lng: 0 (Solar fallback).
  */
 export default function Step01_Address({ store }: Props) {
-  const { goForward, updateAddress, setFirebaseDocId, setTypeCastF, fetchEstimate } = store;
+  const { goForward, updateAddress, setFirebaseDocId, setTypeCastF } = store;
 
   const [query,        setQuery]        = useState('');
   const [suggestions,  setSuggestions]  = useState<GmapsAutocompleteSuggestion[]>([]);
@@ -345,13 +345,9 @@ export default function Step01_Address({ store }: Props) {
         }
       }
 
-      // Pass the ref value directly so fetchEstimate sends the correct docId to
-      // the server even if React state hasn't propagated the new firebaseDocId yet.
-      fetchEstimate(address, localDocIdRef.current);
-
       setTimeout(() => goForward(), 350);
     },
-    [store.state.allowedStates, updateAddress, setFirebaseDocId, goForward, fetchEstimate]
+    [store.state.allowedStates, updateAddress, setFirebaseDocId, goForward]
   );
 
   // ── handleSelectSuggestion ────────────────────────────────────────────────
