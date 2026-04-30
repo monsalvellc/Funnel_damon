@@ -312,6 +312,29 @@ FIREBASE_ADMIN_PRIVATE_KEY            # Full PEM key — include \n newlines in 
 
 ---
 
+## Info Panels (Trust & Education Layer)
+
+Each step from 02–07 has a companion `InfoPanel` sub-component defined at the bottom of its step file (after the default export, same file). These panels are always visible — not gated behind any load state — and serve as lightweight trust-building and expectation-setting cards that answer the homeowner's likely objections before they have to ask.
+
+| Step | Component name | Purpose | Status |
+|---|---|---|---|
+| Step 02 — Verification | `SatelliteInfoPanel` | Explains what satellite data measures vs. what it cannot, and guarantees a free in-person inspection | ✅ Complete |
+| Step 03 — Roof Category | `RoofTypesInfoPanel` | Three photo cards (Asphalt / Flat / Metal) with cost badge, tagline, and lifespan — helps homeowners identify their roof type before selecting | ✅ Complete |
+| Step 04 — Pitch | `PitchInfoPanel` | Explains why pitch affects labour safety requirements and therefore price | ✅ Complete |
+| Step 05 — Stories | *(no separate panel)* | Detail lines (access method, staging, equipment) embedded directly in each option card; trust quote rendered inline below the Continue button | ✅ Complete |
+| Step 06 — Issues | `IssuesInfoPanel` | Explains how current issues affect scheduling priority and final scope | 🔲 Not built |
+| Step 07 — Timeline | `TimelineInfoPanel` | Reactive rows (red/green/blue tint) explain scheduling impact per option; 30-day price hold note | ✅ Complete |
+
+**Conventions for all Info Panels:**
+- Defined as a named function after the step's `export default` in the same file.
+- Rendered inside the step's outer scroll wrapper, below the primary CTA(s).
+- Card treatment: `bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl`.
+- Body copy: `text-white/50 text-xs leading-relaxed`.
+- No Framer Motion — step transition in `QuoteFunnel.tsx` handles entrance animation.
+- Trust quote box at the bottom: `border border-white/10 rounded-2xl`, italic `text-white/40 text-xs`.
+
+---
+
 ## Planned / Future Expansion Areas
 
 > Add notes here as new features are planned or shipped.

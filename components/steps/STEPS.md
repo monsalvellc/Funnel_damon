@@ -1,5 +1,11 @@
 # components/steps/ — Step-by-Step Component Documentation
 
+## Info Panel Styling
+
+All `*InfoPanel` components use the **info-panel-card** token documented in [COMPONENTS.md — Design System — Visual Distinction: Interactive vs. Informational](../COMPONENTS.md#design-system--visual-distinction-interactive-vs-informational). Apply this token to the outer wrapper of every info panel. Do not re-style panels independently — always reference the token so the three-cue visual hierarchy (blur depth, border weight, corner radius) stays consistent across all steps.
+
+---
+
 Each step component receives the full `FunnelStore` object as its only prop.
 Steps are stateless from the app's perspective — all data lives in `useFunnelStore`.
 
@@ -156,6 +162,27 @@ Both action buttons are hidden during loading and shown once `isLoading === fals
 - Calls `goBackward()` → returns to Step 0 (Address).
 - **No Firestore write.**
 
+### Info Panel — SatelliteInfoPanel
+
+Always-visible education card rendered below the "That's not my address" button, inside the same `max-w-xl` column. Never conditional on map load state.
+
+**Header image:** Unsplash aerial neighbourhood photo (`photo-1524813686514-a57563d77965`, `w=800&q=80`). Dark `bg-gradient-to-t from-black/60` overlay. "Satellite imaging active" badge in the bottom-left corner — green pulse dot + text, identical style to the Satellite badge on the map card above.
+
+**Three content rows** (icon container left, title + body right):
+
+| Row | Icon | Icon colour | Title | Body |
+|---|---|---|---|---|
+| 1 | `CheckCircle` | `text-green-400` / `bg-green-500/20` | What the system measures | Exterior roofline footprint, ridge lines, and total slope area — derived directly from satellite data. |
+| 2 | `AlertTriangle` | `text-orange-400` / `bg-orange-500/20` | What it cannot assess | Structural damage, underlayment condition, decking rot, flashing integrity, and attic ventilation. |
+| 3 | `Shield` | `text-blue-400` / `bg-blue-500/20` | Free on-site inspection — always included | Every job starts with a complimentary in-person inspection before scheduling begins. |
+| 4 | `MessageCircle` | `text-violet-400` / `bg-violet-500/20` | Full free consultation — before you commit | We walk you through every line of your estimate in person before anything is scheduled. No pressure, no surprises — just clear answers so you can decide with confidence. |
+
+**Trust quote box:** `border border-white/10 rounded-2xl` inner container with italic `text-white/40 text-xs` quote: *"We believe transparency builds better relationships than surprise invoices. This estimate is yours — no obligation."*
+
+**Icons added to import:** `AlertTriangle`, `Shield`, `MessageCircle` (added alongside existing `CheckCircle`). `CheckCircle` was already imported.
+
+**Styling:** `bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl` — matches the satellite map card directly above. Body copy uses `text-white/50 text-xs leading-relaxed`. No Framer Motion.
+
 ---
 
 ## Step 2 — Step03_RoofCategory.tsx
@@ -199,6 +226,52 @@ Selected card also shows: orange checkmark badge, icon area changes to `bg-orang
 
 - Calls `goBackward()` → returns to Step 1 (Verification).
 - **No Firestore write.**
+
+### Info Panel — RoofTypesInfoPanel
+
+Always-visible education card rendered below the four option cards, inside the same `max-w-xl` column.
+
+**Data array:** `ROOF_TYPE_INFO` — module-level const defined above the `Props` interface in the same file. Three entries (one per card; "Not Sure" is excluded by design).
+
+**Props:** `selected: RoofCategory | null` and `onContinue: () => void` — passed from the parent step component. `selected` drives the Continue button's enabled/disabled state.
+
+**Auto-advance removed:** `handleSelect` in the parent no longer calls `goForward()` automatically. The user selects a card (highlights it), reads the panel, then taps Continue to advance.
+
+**Three stacked cards** — each a horizontal flex strip:
+
+| Roof Type | Unsplash photo URL | Cost badge | Tagline | Lifespan | Accent color |
+|---|---|---|---|---|---|
+| Asphalt Shingles | `photo-1570129477492-45c003edd2be?w=200&q=80` | Budget–Mid | The most-installed roof type in North America | 25–50 yrs | Blue — `bg-blue-500/20 text-blue-300`, `border-blue-400/20` |
+| Flat / Low Slope | `photo-1558618666-fcd25c85cd64?w=200&q=80` | Mid | Membrane systems designed for minimal-pitch surfaces | 20–30 yrs | Teal — `bg-teal-500/20 text-teal-300`, `border-teal-400/20` |
+| Metal Roof | `photo-1600585154340-be6161a56a0c?w=200&q=80` | Premium | Long-lasting protection with superior energy performance | 40–70 yrs | Orange — `bg-orange-500/20 text-orange-300`, `border-orange-400/20` |
+
+**Card anatomy:** `relative bg-white/5 border {borderAccentClass} rounded-2xl overflow-hidden flex`.
+- Left: photo strip `w-24 flex-shrink-0 relative self-stretch overflow-hidden` — image is `absolute inset-0 w-full h-full object-cover`.
+- Right: `flex-1 p-4` — bold name + cost badge on row 1, tagline (`text-white/60 text-xs`) on row 2, descriptor tag pills on row 3, lifespan (`text-white/35 text-xs`) on row 4.
+
+**Descriptor tag pills** — rendered as a wrapping row of chip spans between the tagline and the lifespan line:
+
+| Roof Type | Tags |
+|---|---|
+| Asphalt Shingles | Most Popular · Easily Repaired · Versatile · Dependable · Budget-Friendly |
+| Flat / Low Slope | Low Profile · Commercial Grade · Accessible · Modern Look |
+| Metal Roof | Premium · High Upfront Cost · Longest Lifespan · Energy Efficient |
+
+**Tag color styles:**
+- **Asphalt (warm tint):** `bg-orange-500/10 text-orange-300/70` — subtly warmer to reinforce Asphalt as the most practical choice.
+- **Flat + Metal (neutral muted):** `bg-white/10 text-white/50` — standard muted pill style.
+- All pills: `rounded-full text-xs px-2 py-0.5`, wrapping with `flex flex-wrap gap-1`.
+
+**Asphalt "Most Popular" badge:** `isHighlighted: true` on the Asphalt entry only. Rendered as `absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-bl-xl z-10` — a top-right corner label clipped neatly by the card's `rounded-2xl overflow-hidden`. The `rounded-bl-xl` gives it a curved bottom-left edge so it reads as a corner ribbon. No "Recommended" label is used — the badge, tag density, and warm tint carry the signal.
+
+**Footer note** (below all cards): `text-center text-white/35 text-xs mt-4` — "Not sure? Select 'Not Sure' above — we'll identify it during the free inspection."
+
+**Continue button** (below footer note): full-width `rounded-2xl py-4` button.
+- Enabled (selection made): `bg-orange-500 hover:bg-orange-600 text-white shadow-card-glow` + `ArrowRight` icon.
+- Disabled (nothing selected): `bg-white/10 text-white/30 cursor-not-allowed`, no icon.
+- Calls `onContinue()` (which is `goForward` from the parent store).
+
+**Outer wrapper:** `mt-10 bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-6` — matches the `SatelliteInfoPanel` card treatment on Step 2. No Framer Motion. Added `ArrowRight` to the lucide-react import.
 
 ---
 
@@ -338,6 +411,40 @@ The visual character is rendered in a `text-3xl font-black` box. Unselected: `te
 - Calls `goBackward()` → returns to Roof Type (Step 2).
 - **No Firestore write.**
 
+### Info Panel — PitchInfoPanel
+
+Always-visible education card rendered below the two option cards and the existing disclaimer line, inside the same `max-w-xl` column.
+
+**Header:** Title "How Pitch Affects Your Quote" + one-line intro paragraph explaining pitch as the primary labor variable.
+
+**SVG diagram** inside a `bg-white/5 border border-white/10 rounded-2xl` card — two roof silhouettes side by side separated by a dashed vertical center line:
+
+| Side | Color family | Silhouette points | Pitch ratio | Angle arc |
+|---|---|---|---|---|
+| Left — Low Slope | Blue — `rgba(59,130,246,…)` fill, `rgba(96,165,250,…)` stroke | `(25,180) → (100,161) → (175,180)` | ≈ 3:12 | r=22, sweep=0, ~14° |
+| Right — Steep Pitch | Orange — `rgba(249,115,22,…)` fill, `rgba(251,146,60,…)` stroke | `(225,180) → (300,124) → (375,180)` | ≈ 9:12 | r=22, sweep=0, ~37° |
+
+Angle arcs use SVG `A` path commands centered on each silhouette's left base corner (`sweep=0` = counterclockwise on screen, so the arc sweeps upward from horizontal to the slope line, making the pitch angle visually obvious). `viewBox="0 0 400 210"`, `overflow="visible"`, `className="w-full"` for full responsiveness.
+
+Cost badges float above each ridge:
+- Left: "Base rate" — green (`rgba(34,197,94,…)` / `rgba(74,222,128,…)`)
+- Right: "+20% labor" — orange (`rgba(249,115,22,…)` / `rgba(251,146,60,…)`)
+
+Labels "Low Slope" and "Steep Pitch" appear below the baseline. All SVG colors use `rgba(…)` directly — no Tailwind classes inside the SVG.
+
+**Four explanation rows** (icon + title + body), each in a `bg-white/5 border border-white/10 rounded-2xl` card:
+
+| Row | Icon | Icon bg | Title | Body |
+|---|---|---|---|---|
+| 1 | `TrendingUp` | `bg-blue-500/20 text-blue-400` | Low slope — accessible, but drainage-sensitive | Gentler angles are walkable without harnesses (base rate). Water exits slowly — proper membrane and tight lap sealing critical at flashings and transitions. |
+| 2 | `TrendingUp` | `bg-orange-500/20 text-orange-400` | Steep pitch — fast drainage, specialized crew | High-angle roofs shed rain quickly, extending shingle life. Install requires harnesses/walk boards by code, slower pace, more waste at hips and valleys. +20% modifier already reflected. |
+| 3 | `Droplets` | `bg-sky-500/20 text-sky-400` | Valleys, skylights & chimney transitions | Where planes meet or penetrations break the field, water concentrates. Ice & water shield + reinforced step flashing + additional underlayment layer on steeper pitches. |
+| 4 | `ShieldCheck` | `bg-emerald-500/20 text-emerald-400` | Drip edge — your first defense against rot | Without drip edge, water wicks back under shingles by surface tension (like liquid creeping up the inside of a mug). Drip edge breaks that tension, protecting fascia and decking edge from hidden rot. |
+
+**Bottom note:** `text-white/30 text-xs text-center` — "An inspector will confirm your exact pitch on-site before any work begins."
+
+**New icon imports:** `TrendingUp`, `Droplets`, `ShieldCheck` added to the existing `import { ArrowLeft } from 'lucide-react'` line. No Framer Motion.
+
 ---
 
 ## Step 5 — Step05_Stories.tsx
@@ -347,20 +454,32 @@ The visual character is rendered in a `text-3xl font-black` box. Unselected: `te
 
 ### What the User Sees
 
-Three option cards:
+Three option cards with a **Continue** button below. **1 Story is pre-selected by default** via local `useState` initialized to `'1'` (or the existing store value if the user navigated back).
 
-| Emoji | Label | Description | Impact text |
-|---|---|---|---|
-| 🏡 | 1 Story | Single-floor home | Standard access · Base pricing |
-| 🏘️ | 2 Stories | Two-floor home | Extended staging required · +15% |
-| 🏗️ | 3+ Stories | Three or more floors | Crane / rigging required · +30% |
+Each card shows: emoji, label + checkmark badge (when selected), description, impact text, and three detail tag pills (access method, staging, equipment).
+
+| Emoji | Label | Description | Impact text | Detail tags |
+|---|---|---|---|---|
+| 🏡 | 1 Story | Single-floor home | Standard access · Base pricing | Ground-level access · No staging needed · Standard ladders |
+| 🏘️ | 2 Stories | Two-floor home | Extended staging required · +15% | Elevated reach required · Perimeter staging set · Pump jack or scaffold |
+| 🏗️ | 3+ Stories | Three or more floors | Crane / rigging required · +30% | Crane or rigging needed · Full staging system · Specialized lift equipment |
+
+Detail tags render as small rounded-full pill spans (`border border-white/10 text-white/30`, or `border-orange-400/30 text-orange-200/60` when selected).
+
+Below all cards: an orange **Continue** button, then a small italic trust note (`text-white/30 text-xs italic`): *"Every modifier is calculated upfront and shown in your estimate range — no surprise add-ons at the time of signing."*
 
 ### Every Action & Its Outcome
 
 #### Tapping a card
 
-1. `updatePropertyDetails({ stories: value })` → commits to store.
-2. `setTimeout(() => goForward(), 300)` → advances to Issues.
+- Sets local `selected` state to the tapped value — does **not** write to the store yet.
+- Card highlights immediately (orange border + background, checkmark badge, orange detail tags).
+- **No Firestore write.**
+
+#### "Continue" button
+
+1. `updatePropertyDetails({ stories: selected })` → commits local selection to store.
+2. `goForward()` → advances to Issues.
 3. **No Firestore write on this step.**
 
 **Pricing impact:**
@@ -459,6 +578,32 @@ Badge renders in a small pill to the right of the label text. Selected cards als
 
 - Calls `goBackward()` → returns to Issues.
 - **No Firestore write.**
+
+### Info Panel — TimelineInfoPanel
+
+Always-visible education card rendered below the three option cards, inside the same `max-w-xl` column.
+
+**Prop:** `selected: Timeline | null` — passed as `state.leadData.propertyDetails.timeline ?? null`. When `null` (no selection yet), all rows render in the default muted style.
+
+**Header:** Title "Why Planning Ahead Saves You Money" + one-line intro paragraph explaining that timeline affects crew availability, material lead times, and final price.
+
+**Three stacked rows** — one per timeline option. Each row is a `border rounded-2xl p-4` container with an emoji, a heading + badge strip, and a body paragraph. The row whose `value` matches `selected` is highlighted with a tinted border and background; all others stay muted (`border-white/10 bg-white/5`).
+
+| Row | Emoji | Heading | Body | Active tint |
+|---|---|---|---|---|
+| emergency | 🚨 | Priority Scheduling | 48-hour crew mobilization available for urgent situations. Small rush surcharge applies and is already reflected in the estimate. | `border-red-500/50 bg-red-500/10` |
+| 1-3months | 📅 | Best Material Availability | Planning 1–3 months out means optimal material availability, no rush premium, and pricing that can be locked in before seasonal changes. | `border-green-500/50 bg-green-500/10` |
+| researching | 🔍 | No Pressure | Estimate is theirs to keep. No obligation to move forward on any timeline. | `border-blue-500/50 bg-blue-500/10` |
+
+**Badges on each active row:**
+- The `1-3months` row carries a permanent **"Best value"** pill (`bg-green-600 text-white text-xs font-bold rounded-full`).
+- Whichever row is the active selection shows a **"Your selection"** pill (`bg-white/20 text-white/60 text-xs font-medium rounded-full`) next to its heading.
+
+**Row data source:** Module-level `PANEL_ROWS` const defined above `TimelineInfoPanel` in the same file. Mirrors the `PANEL_ROWS` pattern used elsewhere.
+
+**Bottom note:** `text-white/30 text-xs text-center` — "💡 Your estimate is held at today's pricing for 30 days — no obligation."
+
+**Outer wrapper:** `mt-10 bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-6` — matches the card treatment used by all other Info Panels. No Framer Motion. No new icon imports (emoji only).
 
 ---
 

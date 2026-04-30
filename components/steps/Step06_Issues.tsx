@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import type { FunnelStore, RoofIssue } from '@/hooks/useFunnelStore';
 
@@ -47,9 +48,9 @@ const OPTIONS: {
 /**
  * Step06_Issues — "What issues are you experiencing?" (multi-select)
  *
- * Unlike previous steps, this is a MULTI-SELECT step.
+ * This is a MULTI-SELECT step.
  * The user can select one or more issues before clicking "Continue".
- * At least one selection is required (validated via validateStep in useFunnelStore).
+ * At least one selection is required.
  *
  * Three or more issues apply a +5% modifier in calculateEstimate.
  *
@@ -57,19 +58,30 @@ const OPTIONS: {
  */
 export default function Step06_Issues({ store }: Props) {
   const { state, goForward, goBackward, updatePropertyDetails } = store;
-  const selected = state.leadData.propertyDetails.currentIssues;
+  
+  // Initialize local state, defaulting to 'old_age' if nothing is selected yet
+  const [selected, setSelected] = useState<RoofIssue[]>(
+    state.leadData.propertyDetails.currentIssues.length > 0 
+      ? state.leadData.propertyDetails.currentIssues 
+      : ['old_age']
+  );
 
   /**
-   * toggleIssue — Adds or removes a RoofIssue from the currentIssues array.
-   * Maintains immutability by creating a new array on every update.
-   *
-   * @param value - RoofIssue to toggle
+   * toggleIssue — Adds or removes a RoofIssue from the local selected array.
    */
   function toggleIssue(value: RoofIssue) {
     const next = selected.includes(value)
       ? selected.filter((v) => v !== value)
       : [...selected, value];
-    updatePropertyDetails({ currentIssues: next });
+    setSelected(next);
+  }
+
+  /**
+   * handleContinue — Saves the local selections to the global store and advances.
+   */
+  function handleContinue() {
+    updatePropertyDetails({ currentIssues: selected });
+    goForward();
   }
 
   const canAdvance = selected.length > 0;
@@ -144,7 +156,7 @@ export default function Step06_Issues({ store }: Props) {
 
         {/* Multi-select CTA */}
         <button
-          onClick={() => canAdvance && goForward()}
+          onClick={() => canAdvance && handleContinue()}
           disabled={!canAdvance}
           className={`
             w-full min-h-[56px] rounded-2xl font-bold text-lg
@@ -167,6 +179,52 @@ export default function Step06_Issues({ store }: Props) {
             {selected.length >= 3 && ' · Multiple issues noted for pricing'}
           </p>
         )}
+
+        <ProcessInfoPanel />
+
+      </div>
+    </div>
+  );
+}
+
+// ─── ProcessInfoPanel ─────────────────────────────────────────────────────────
+const PROCESS_STEPS = [
+  {
+    emoji: '⚡',
+    label: 'Live Calculations',
+    body: 'Our engine is currently running mathematical calculations based on your specific property details and selections.',
+  },
+  {
+    emoji: '📊',
+    label: 'Three Instant Quotes',
+    body: 'You will receive a written dollar estimate instantly, featuring three different tier options tailored to your roof.',
+  },
+  {
+    emoji: '🔍',
+    label: 'Inspection & Discounts',
+    body: 'If you schedule a free inspection, we will verify the measurements in person and provide a finalized, detailed estimate that includes your discounts.',
+  },
+];
+
+function ProcessInfoPanel() {
+  return (
+    <div className="relative overflow-hidden mt-10 bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-xl border border-white/[0.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_24px_rgba(0,0,0,0.25)] rounded-3xl p-6 mb-6">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent rounded-t-3xl" />
+      <p className="text-white/40 text-xs font-semibold uppercase tracking-[0.15em] mb-4">What happens next</p>
+
+      <div className="bg-white/[0.05] border border-white/[0.10] rounded-2xl overflow-hidden">
+        {PROCESS_STEPS.map((step, i) => (
+          <div
+            key={step.label}
+            className={`flex items-start gap-3 p-4 ${i < PROCESS_STEPS.length - 1 ? 'border-b border-white/[0.06]' : ''}`}
+          >
+            <span className="text-xl flex-shrink-0 mt-0.5">{step.emoji}</span>
+            <div>
+              <p className="text-white font-semibold text-sm mb-0.5">{step.label}</p>
+              <p className="text-white/50 text-xs leading-relaxed">{step.body}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

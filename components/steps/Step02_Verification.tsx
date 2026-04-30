@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, CheckCircle, ArrowLeft, Satellite } from 'lucide-react';
+import { MapPin, CheckCircle, ArrowLeft, Satellite, AlertTriangle, Shield, MessageCircle } from 'lucide-react';
 import type { FunnelStore } from '@/hooks/useFunnelStore';
 
 interface Props {
@@ -43,9 +43,6 @@ export default function Step02_Verification({ store }: Props) {
   if (!address) return null;
 
   // ── Static Map URL ────────────────────────────────────────────────────────
-  // Center on exact lat/lng (more reliable than address string encoding) and
-  // add a red marker pin at the same point so the property is clearly indicated.
-  // NEXT_PUBLIC_ prefix is required for Next.js to expose this var to the browser.
   const staticMapUrl = hasCoords
     ? `https://maps.googleapis.com/maps/api/staticmap` +
       `?center=${address.lat},${address.lng}` +
@@ -88,12 +85,6 @@ export default function Step02_Verification({ store }: Props) {
           {/* Map image area */}
           <div className="relative w-full h-52 sm:h-64 bg-slate-800 overflow-hidden">
 
-            {/*
-             * Satellite image — only rendered when we have valid coordinates.
-             * Starts fetching on mount (opacity-0 during shimmer) and cross-fades
-             * in when onLoad fires. Manual-entry users (staticMapUrl === null)
-             * skip straight to the fallback placeholder below.
-             */}
             {staticMapUrl && !imgError && (
               <img
                 src={staticMapUrl}
@@ -120,11 +111,6 @@ export default function Step02_Verification({ store }: Props) {
               `}
             />
 
-            {/*
-             * Error fallback — shown when the Static Maps API call fails.
-             * Keeps the layout intact and still displays the address text so
-             * the user can confirm they're looking at the right property.
-             */}
             {imgError && (
               <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-600 to-slate-800 flex flex-col items-center justify-center gap-3">
                 <Satellite size={36} className="text-white/25" />
@@ -149,7 +135,6 @@ export default function Step02_Verification({ store }: Props) {
           {/* Address info row */}
           <div className="px-5 py-4 flex items-start gap-3">
             {isLoading ? (
-              /* Skeleton rows while the map loads */
               <div className="flex-1 space-y-2 py-1">
                 <div className="h-4 bg-white/10 rounded shimmer-bg w-3/4" />
                 <div className="h-3 bg-white/10 rounded shimmer-bg w-1/2" />
@@ -164,11 +149,6 @@ export default function Step02_Verification({ store }: Props) {
                   <p className="text-white/50 text-sm mt-0.5">
                     {address.city}{address.city && address.state ? ', ' : ''}{address.state} {address.zip}
                   </p>
-                  {/*
-                   * Coordinates — only rendered when we have a real geocode result.
-                   * Manual-entry users (lat: 0, lng: 0) skip this line entirely
-                   * rather than showing the misleading "0.0000°N, 0.0000°W".
-                   */}
                   {hasCoords && (
                     <p className="text-white/30 text-xs mt-1">
                       {address.lat.toFixed(4)}°N, {Math.abs(address.lng).toFixed(4)}°W
@@ -200,11 +180,95 @@ export default function Step02_Verification({ store }: Props) {
         {!isLoading && (
           <button
             onClick={goBackward}
-            className="mt-4 text-white/40 hover:text-white/70 text-sm font-medium transition-colors min-h-[44px]"
+            className="
+              mt-3 w-full min-h-[48px] rounded-2xl
+              bg-white/10 hover:bg-white/15 active:bg-white/20
+              backdrop-blur-sm border border-white/20 hover:border-white/30
+              text-white/70 hover:text-white font-medium text-sm
+              transition-all duration-200 active:scale-[0.98]
+              flex items-center justify-center gap-2
+            "
           >
+            <ArrowLeft size={15} />
             That&apos;s not my address — go back
           </button>
         )}
+
+        <SatelliteInfoPanel />
+      </div>
+    </div>
+  );
+}
+
+// ── SatelliteInfoPanel ────────────────────────────────────────────────────────
+function SatelliteInfoPanel() {
+  return (
+    <div className="relative overflow-hidden w-full bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-xl border border-white/[0.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_24px_rgba(0,0,0,0.25)] rounded-3xl mt-4 mb-6">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent rounded-t-3xl" />
+
+      {/* Content rows */}
+      <div className="px-5 py-5 space-y-3">
+
+        <h3 className="text-white font-bold text-base mb-2">How it works</h3>
+
+        {/* Row 1 — What the system measures */}
+        <div className="flex items-start gap-3 bg-white/[0.05] border border-white/[0.10] rounded-2xl p-3">
+          <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <CheckCircle size={15} className="text-green-400" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold leading-snug">What the system measures</p>
+            <p className="text-white/50 text-xs leading-relaxed mt-0.5">
+              Exterior roofline footprint, ridge lines, and total slope area — derived directly from satellite data.
+            </p>
+          </div>
+        </div>
+
+        {/* Row 2 — What it cannot assess */}
+        <div className="flex items-start gap-3 bg-white/[0.05] border border-white/[0.10] rounded-2xl p-3">
+          <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <AlertTriangle size={15} className="text-orange-400" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold leading-snug">What it cannot assess</p>
+            <p className="text-white/50 text-xs leading-relaxed mt-0.5">
+              Structural damage, underlayment condition, decking rot, flashing integrity, and attic ventilation.
+            </p>
+          </div>
+        </div>
+
+        {/* Row 3 — Free on-site inspection */}
+        <div className="flex items-start gap-3 bg-white/[0.05] border border-white/[0.10] rounded-2xl p-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <Shield size={15} className="text-blue-400" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold leading-snug">Free on-site inspection — always included</p>
+            <p className="text-white/50 text-xs leading-relaxed mt-0.5">
+              Every job starts with a complimentary in-person inspection before scheduling begins.
+            </p>
+          </div>
+        </div>
+
+        {/* Row 4 — Full free consultation */}
+        <div className="flex items-start gap-3 bg-white/[0.05] border border-white/[0.10] rounded-2xl p-3">
+          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <MessageCircle size={15} className="text-violet-400" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold leading-snug">Full free consultation — before you commit</p>
+            <p className="text-white/50 text-xs leading-relaxed mt-0.5">
+              We walk you through every line of your estimate in person before anything is scheduled. No pressure, no surprises — just clear answers so you can decide with confidence.
+            </p>
+          </div>
+        </div>
+
+        {/* Trust quote */}
+        <div className="border border-white/10 rounded-2xl px-4 py-3">
+          <p className="text-white/40 text-xs leading-relaxed italic">
+            &ldquo;We believe transparency builds better relationships than surprise invoices. This estimate is yours — no obligation.&rdquo;
+          </p>
+        </div>
       </div>
     </div>
   );

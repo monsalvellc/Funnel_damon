@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import type { FunnelStore, Stories } from '@/hooks/useFunnelStore';
 
@@ -13,6 +14,7 @@ const OPTIONS: {
   description: string;
   emoji: string;
   impact: string;
+  details: string[];
 }[] = [
   {
     value: '1',
@@ -20,6 +22,7 @@ const OPTIONS: {
     description: 'Single-floor home',
     emoji: '🏡',
     impact: 'Standard access · Base pricing',
+    details: ['Ground-level access', 'No staging needed', 'Standard ladders'],
   },
   {
     value: '2',
@@ -27,6 +30,7 @@ const OPTIONS: {
     description: 'Two-floor home',
     emoji: '🏘️',
     impact: 'Extended staging required · +15%',
+    details: ['Elevated reach required', 'Perimeter staging set', 'Pump jack or scaffold'],
   },
   {
     value: '3+',
@@ -34,28 +38,19 @@ const OPTIONS: {
     description: 'Three or more floors',
     emoji: '🏗️',
     impact: 'Crane / rigging required · +30%',
+    details: ['Crane or rigging needed', 'Full staging system', 'Specialized lift equipment'],
   },
 ];
 
-/**
- * Step05_Stories — "How many stories is your home?"
- *
- * Stories count drives the biggest single labor modifier in calculateEstimate.
- * A 3+ story home costs 30% more due to specialized equipment and safety requirements.
- *
- * Single-select; auto-advances on tap.
- */
 export default function Step05_Stories({ store }: Props) {
   const { state, goForward, goBackward, updatePropertyDetails } = store;
-  const selected = state.leadData.propertyDetails.stories;
+  const [selected, setSelected] = useState<Stories>(
+    state.leadData.propertyDetails.stories ?? '1'
+  );
 
-  /**
-   * handleSelect — commits stories selection and advances the funnel.
-   * @param value - Stories value ('1' | '2' | '3+')
-   */
-  function handleSelect(value: Stories) {
-    updatePropertyDetails({ stories: value });
-    setTimeout(() => goForward(), 300);
+  function handleContinue() {
+    updatePropertyDetails({ stories: selected });
+    goForward();
   }
 
   return (
@@ -88,9 +83,9 @@ export default function Step05_Stories({ store }: Props) {
             return (
               <button
                 key={opt.value}
-                onClick={() => handleSelect(opt.value)}
+                onClick={() => setSelected(opt.value)}
                 className={`
-                  option-card w-full text-left rounded-2xl p-5 border-2 min-h-[80px]
+                  option-card w-full text-left rounded-2xl p-5 border-2
                   transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]
                   backdrop-blur-md
                   ${isSelected
@@ -119,12 +114,87 @@ export default function Step05_Stories({ store }: Props) {
                       {opt.description}
                     </p>
                     <p className="text-white/30 text-xs mt-1">{opt.impact}</p>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {opt.details.map((detail) => (
+                        <span
+                          key={detail}
+                          className={`text-xs px-2 py-0.5 rounded-full border ${
+                            isSelected
+                              ? 'border-orange-400/30 text-orange-200/60'
+                              : 'border-white/10 text-white/30'
+                          }`}
+                        >
+                          {detail}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </button>
             );
           })}
         </div>
+
+        <button
+          onClick={handleContinue}
+          className="mt-6 w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold text-base rounded-2xl py-4 transition-colors duration-200"
+        >
+          Continue
+        </button>
+
+        <p className="mt-4 text-white/30 text-xs italic text-center leading-relaxed">
+          Every modifier is calculated upfront and shown in your estimate range — no surprise add-ons at the time of signing.
+        </p>
+
+        <StoriesInfoPanel />
+
+      </div>
+    </div>
+  );
+}
+
+// ─── StoriesInfoPanel ─────────────────────────────────────────────────────────
+function StoriesInfoPanel() {
+  return (
+    <div className="relative overflow-hidden mt-10 bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-xl border border-white/[0.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_24px_rgba(0,0,0,0.25)] rounded-3xl p-6 mb-6">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent rounded-t-3xl" />
+      <p className="text-white/40 text-xs font-semibold uppercase tracking-[0.15em] mb-4">Access &amp; staging guide</p>
+
+      <div className="grid grid-cols-3 gap-3">
+
+        {/* 1 Story */}
+        <div className="bg-white/[0.05] border border-white/[0.10] rounded-2xl p-4 flex flex-col gap-2">
+          <span className="text-2xl">🏡</span>
+          <p className="text-white font-semibold text-xs leading-snug">1 Story</p>
+          <ul className="space-y-1.5 flex-1">
+            <li className="text-white/50 text-xs leading-relaxed">Ground-level ladder access</li>
+            <li className="text-white/50 text-xs leading-relaxed">No staging required</li>
+            <li className="text-white/50 text-xs leading-relaxed">Standard crew · Base pricing</li>
+          </ul>
+        </div>
+
+        {/* 2 Stories */}
+        <div className="bg-white/[0.05] border border-white/[0.10] rounded-2xl p-4 flex flex-col gap-2">
+          <span className="text-2xl">🏘️</span>
+          <p className="text-white font-semibold text-xs leading-snug">2 Stories</p>
+          <ul className="space-y-1.5 flex-1">
+            <li className="text-white/50 text-xs leading-relaxed">Extended reach required</li>
+            <li className="text-white/50 text-xs leading-relaxed">Pump jack or scaffold</li>
+            <li className="text-white/50 text-xs leading-relaxed">+15% crew adjustment</li>
+          </ul>
+        </div>
+
+        {/* 3+ Stories */}
+        <div className="bg-white/[0.05] border border-white/[0.10] rounded-2xl p-4 flex flex-col gap-2">
+          <span className="text-2xl">🏗️</span>
+          <p className="text-white font-semibold text-xs leading-snug">3+ Stories</p>
+          <ul className="space-y-1.5 flex-1">
+            <li className="text-white/50 text-xs leading-relaxed">Crane or rigging needed</li>
+            <li className="text-white/50 text-xs leading-relaxed">Full staging system</li>
+            <li className="text-white/50 text-xs leading-relaxed">+30% crew adjustment</li>
+          </ul>
+        </div>
+
       </div>
     </div>
   );

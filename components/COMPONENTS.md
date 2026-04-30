@@ -129,6 +129,76 @@ Step {visualStep} of {totalSteps}    [STEP LABEL]    {progress}%
 
 ---
 
+## Design System — Visual Distinction: Interactive vs. Informational
+
+Two visual tiers exist in the funnel UI. The difference in blur depth, border weight, and corner radius is the three-cue system that tells users "this is information, not an action" without any labelling.
+
+### Tier 1 — Interactive / Clickable Cards (option-card token)
+
+Used on all selectable option cards across Steps 02–07.
+
+| Property | Value |
+|---|---|
+| Background (unselected) | `bg-white/15` |
+| Background (selected) | `bg-orange-500/20` |
+| Border (unselected) | `border-2 border-white/10` |
+| Border (selected) | `border-2 border-orange-500` |
+| Blur | `backdrop-blur-md` |
+| Corner radius | `rounded-2xl` |
+| Shadow (selected) | `shadow-card-glow` |
+| Class marker | `option-card` |
+| Has hover states | Yes — `hover:border-white/25 hover:bg-white/25` |
+| Has cursor change | Yes — pointer (default button behaviour) |
+| Tappable | Yes |
+
+### Tier 2 — Informational Panels (info-panel-card token)
+
+Used on every `*InfoPanel` component across Steps 02–09. Apply the full class list below to the **outer wrapper div only**. Never apply it to inner sub-cards.
+
+| Property | Value |
+|---|---|
+| Background | `bg-gradient-to-b from-white/[0.08] to-white/[0.03]` |
+| Blur | `backdrop-blur-xl` |
+| Border | `border border-white/[0.18]` (single weight — thinner than option cards) |
+| Shadow | `shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_24px_rgba(0,0,0,0.25)]` |
+| Corner radius | `rounded-3xl` |
+| Position | Must include `relative overflow-hidden` for the top-highlight line |
+| Has hover states | No |
+| Has cursor change | No |
+| Tappable | No |
+
+**Top-edge highlight line** — add as the first child inside every info-panel-card outer wrapper:
+
+```tsx
+<div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent rounded-t-3xl" />
+```
+
+**Inner sub-cards** — direct children that are themselves card-shaped (e.g. the roof type cards in `RoofTypesInfoPanel`, the explanation rows in `PitchInfoPanel`, the process steps in `ProcessInfoPanel`) should use:
+
+```
+bg-white/[0.05] border border-white/[0.10] rounded-2xl
+```
+
+Do **not** apply the gradient or metallic shadow to inner sub-cards — only the outer wrapper gets the full token.
+
+**Section eyebrow labels** inside panels (the small uppercase tag lines):
+
+```
+text-white/40 text-xs font-semibold uppercase tracking-[0.15em]
+```
+
+### Rationale — the three cues at a glance
+
+| Cue | Interactive card | Informational panel | Signal |
+|---|---|---|---|
+| Blur | `backdrop-blur-md` | `backdrop-blur-xl` | Panel feels deeper / further back |
+| Border weight | `border-2` | `border` (1px) | Thinner border = not a pressable target |
+| Corner radius | `rounded-2xl` | `rounded-3xl` | Larger radius = more "display surface" than "button" |
+
+Together these three differences make the visual hierarchy legible without any text labels explaining what is interactive.
+
+---
+
 ## 3. BackgroundMedia.tsx
 
 **Purpose:** Full-screen fixed background layer. Accepts either a static image or a looping video. Configured by a single constant at the top of the file.
