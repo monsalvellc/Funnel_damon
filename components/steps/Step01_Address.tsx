@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MapPin, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { MapPin, CheckCircle, ArrowRight, Loader2, Star } from 'lucide-react';
 import type { FunnelStore, AddressData } from '@/hooks/useFunnelStore';
 import { ENABLE_GHOST_CAPTURE } from '@/hooks/useFunnelStore';
 import { syncLeadToDatabase } from '@/services/firebaseService';
@@ -593,13 +593,189 @@ export default function Step01_Address({ store }: Props) {
               : 'Start typing your street address to see suggestions'}
           </p>
         </div>
-
+        <WelcomeInfoPanel />
+        <ReviewsPanel />
       </div>
 
       <p className="text-white/25 text-xs text-center pb-6 px-6">
         By continuing, you agree to be contacted by our certified roofing partners.
         Your information is never sold.
       </p>
+    </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INFO PANEL — Welcome & About Us
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function WelcomeInfoPanel() {
+  return (
+    <div 
+      className="mt-12 mb-4 w-full max-w-xl mx-auto bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-xl border border-white/[0.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_24px_rgba(0,0,0,0.25)] rounded-3xl relative overflow-hidden p-6 animate-fade-in"
+      style={{ animationDelay: '350ms' }}
+    >
+      {/* Top-edge highlight line */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent rounded-t-3xl" />
+
+      {/* Section 1: Our Mission & The Tool */}
+      <div className="mb-6">
+        {/* Bumped to 17px */}
+        <h3 className="text-white/40 text-[25px] font-semibold uppercase tracking-[0.15em] mb-3 ml-1">
+          Why We Built This Tool
+        </h3>
+        <div className="bg-white/[0.05] border border-white/[0.10] rounded-2xl p-5">
+          {/* Bumped to 21px */}
+          <h4 className="text-white text-[21px] font-medium mb-3">
+            Dear Homeowners,
+          </h4>
+          {/* Bumped to 19px */}
+          <p className="text-white/60 text-[19px] leading-relaxed mb-4">
+            We are Blue Hat Roofs, proudly based right here in Winston-Salem, North Carolina. For too long, the roofing industry has relied on confusing estimates and high-pressure sales tactics. Our goal is to completely change that by putting you back in control.
+          </p>
+          <p className="text-white/60 text-[19px] leading-relaxed">
+            We built this tool because we believe you deserve upfront, honest pricing before a contractor ever steps foot on your driveway. By combining advanced satellite technology with our local roofing expertise, we give you the exact data you need to make the best decision for your home—with zero pressure.
+          </p>
+        </div>
+      </div>
+
+      {/* Section 2: Team Photos */}
+      <div>
+        <h3 className="text-white/40 text-sm font-semibold uppercase tracking-[0.15em] mb-3 ml-1">
+          Meet The Team
+        </h3>
+        <div className="bg-white/[0.05] border border-white/[0.10] rounded-2xl p-5 flex justify-around items-center">
+          
+          {/* Team Member 1 */}
+          <div className="flex flex-col items-center text-center">
+          <div className="w-[84px] h-[84px] sm:w-[100px] sm:h-[100px] rounded-full bg-slate-800 overflow-hidden mb-3 border-2 border-white/10">
+           <img 
+                src="/team-1.jpg" 
+                alt="Team member" 
+                className="w-full h-full object-cover" 
+                onError={(e) => { e.currentTarget.src = 'https://ui-avatars.com/api/?name=Blue+Hat&background=1e293b&color=fff' }}
+              />
+            </div>
+            {/* Bumped names to text-base, titles to text-sm */}
+            <div className="text-white/90 text-base font-medium">Juan Monsalve</div>
+            <div className="text-white/40 text-sm">Lead Production</div>
+          </div>
+
+          {/* Team Member 2 */}
+          <div className="flex flex-col items-center text-center">
+          <div className="w-[84px] h-[84px] sm:w-[100px] sm:h-[100px] rounded-full bg-slate-800 overflow-hidden mb-3 border-2 border-white/10">
+          <img 
+                src="/team-2.jpg" 
+                alt="Team member" 
+                className="w-full h-full object-cover" 
+                onError={(e) => { e.currentTarget.src = 'https://ui-avatars.com/api/?name=Blue+Hat&background=1e293b&color=fff' }}
+              />
+            </div>
+            <div className="text-white/90 text-base font-medium">Ana  Acosta</div>
+            <div className="text-white/40 text-sm">Office Director</div>
+          </div>
+
+          {/* Team Member 3 */}
+          <div className="flex flex-col items-center text-center">
+          <div className="w-[84px] h-[84px] sm:w-[100px] sm:h-[100px] rounded-full bg-slate-800 overflow-hidden mb-3 border-2 border-white/10">
+          <img 
+                src="/team-3.jpg" 
+                alt="Team member" 
+                className="w-full h-full object-cover" 
+                onError={(e) => { e.currentTarget.src = 'https://ui-avatars.com/api/?name=Blue+Hat&background=1e293b&color=fff' }}
+              />
+            </div>
+            <div className="text-white/90 text-base font-medium">Rudy Jimenez</div>
+            <div className="text-white/40 text-sm">Marketing & Sales</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INFO PANEL — Social Proof / Reviews
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function ReviewsPanel() {
+  const reviews = [
+    {
+      name: "Elizabeth Alexander.",
+      text: "The work crew was very professional and did an excellent job replacing our roof. They showed up on time and went straight to work. Everyone had a role and they worked quietly and quickly. The crew didn't stop until everything was finished. It was a beautiful thing to watch! They were courteous and polite. They cleaned up quickly and left nothing behind - except for a beautiful new roof and an extended warranty. I highly recommend Blue Hat Roofs! Blue Hat Roofs was incredibly transparent. The estimate I got online was exactly what we discussed in person. No high-pressure sales, just honest work.",
+      date: "2 months ago"
+    },
+    {
+      name: "Ahmad Khater",
+      text: "10/10 would recommend had to replace roof an my house, insurance required a write up and he provided it all no questions asked. Great pick of colors and very quick work and transparent prices. Went above and beyond with everything!",
+      date: "4 months ago"
+    },
+    {
+      name: "Kathy Green",
+      text: "It was an absolute pleasure to work with Juan and his crew. I needed a total roof replacement. They did an amazing job in only a couple of days. Juan kept us informed as the job progressed. The yard was left immaculate after completing the job. I would use them again and refer anyone looking for roof work to them.",
+      date: "5 months ago"
+    }
+  ];
+
+  return (
+    <div 
+      className="mb-16 w-full max-w-xl mx-auto bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-xl border border-white/[0.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_24px_rgba(0,0,0,0.25)] rounded-3xl relative overflow-hidden p-6 animate-fade-in"
+      style={{ animationDelay: '450ms' }}
+    >
+      {/* Top-edge highlight line */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent rounded-t-3xl" />
+
+     {/* Header with Google Logo and Star Rating */}
+     <div className="flex items-center justify-between mb-6">
+        
+        {/* Google Reviews Logo - Bumped from h-10 to h-14 */}
+        <div className="ml-1">
+          <img 
+            src="/google-reviews.png" 
+            alt="Google Reviews" 
+            className="h-14 w-auto object-contain drop-shadow-md opacity-95" 
+          />
+        </div>
+
+        {/* Overall Rating Pill */}
+        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 shadow-sm">
+          <span className="text-white/90 text-sm font-bold tracking-wider">5.0</span>
+          <div className="flex text-yellow-400 gap-0.5">
+            {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} fill="currentColor" strokeWidth={1} />)}
+          </div>
+        </div>
+        
+      </div>
+
+      {/* Review Cards */}
+      <div className="flex flex-col gap-4">
+        {reviews.map((review, idx) => (
+          <div key={idx} className="bg-white/[0.05] border border-white/[0.10] rounded-2xl p-5">
+            <div className="flex items-center gap-4 mb-3">
+              {/* User Avatar Circle - Bumped to w-12 h-12 */}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/30 to-orange-600/10 text-orange-400 flex items-center justify-center font-bold text-base border border-orange-500/20 flex-shrink-0">
+                {review.name.charAt(0)}
+              </div>
+              <div>
+                {/* Bumped name to text-base */}
+                <div className="text-white/90 text-base font-medium">{review.name}</div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex text-yellow-400">
+                     {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} fill="currentColor" strokeWidth={0} />)}
+                  </div>
+                  {/* Bumped date to text-xs */}
+                  <span className="text-white/40 text-xs">{review.date}</span>
+                </div>
+              </div>
+            </div>
+            {/* Bumped review body to text-base */}
+            <p className="text-white/70 text-base leading-relaxed italic">"{review.text}"</p>
+          </div>
+        ))}
+      </div>
+      
     </div>
   );
 }
