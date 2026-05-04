@@ -648,7 +648,7 @@ function WelcomeInfoPanel() {
           
           {/* Team Member 1 */}
           <div className="flex flex-col items-center text-center">
-          <div className="w-[84px] h-[84px] sm:w-[100px] sm:h-[100px] rounded-full bg-slate-800 overflow-hidden mb-3 border-2 border-white/10">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-slate-800 overflow-hidden mb-3 border-2 border-white/10">  
            <img 
                 src="/team-1.jpg" 
                 alt="Team member" 
@@ -663,7 +663,7 @@ function WelcomeInfoPanel() {
 
           {/* Team Member 2 */}
           <div className="flex flex-col items-center text-center">
-          <div className="w-[84px] h-[84px] sm:w-[100px] sm:h-[100px] rounded-full bg-slate-800 overflow-hidden mb-3 border-2 border-white/10">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-slate-800 overflow-hidden mb-3 border-2 border-white/10">  
           <img 
                 src="/team-2.jpg" 
                 alt="Team member" 
@@ -677,7 +677,7 @@ function WelcomeInfoPanel() {
 
           {/* Team Member 3 */}
           <div className="flex flex-col items-center text-center">
-          <div className="w-[84px] h-[84px] sm:w-[100px] sm:h-[100px] rounded-full bg-slate-800 overflow-hidden mb-3 border-2 border-white/10">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-slate-800 overflow-hidden mb-3 border-2 border-white/10">  
           <img 
                 src="/team-3.jpg" 
                 alt="Team member" 
